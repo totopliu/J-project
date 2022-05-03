@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.PricesMapper">
+	
+	<select id="selectPricesForList" resultType="com.alibaba.fastjson.JSONObject">
+		select 
+			Symbol,
+			(select fixed from t_sys_currency_prices where symbol = t.Symbol) as fixed,
+			(select point_relation from t_sys_currency_prices where symbol = t.Symbol) as point_relation,
+			(select date_format(gmt_create, '%Y-%m-%d %k:%i:%s') from t_sys_currency_prices where symbol = t.Symbol) as gmt_create_fmt,
+			(select name from t_sys_currency where id = (select currency_id from t_sys_currency_prices where symbol = t.Symbol)) as currency
+		from
+			mt5_prices t
+	</select>
+	
+	<insert id="insertRelation">
+		insert into 
+			t_sys_currency_prices 
+			(symbol, currency_id, gmt_create)
+		values
+			(#{symbol}, #{currency_id}, now())
+	</insert>
+	
+	<select id="countBySymbol" resultType="Integer">
+		select 
+			count(*) 
+		from
+			t_sys_currency_prices
+		where
+			symbol=#{symbol}
+	</select>
+	
+	<update id="updCurrencyBySymbol">
+		update
+			t_sys_currency_prices
+		set
+			currency_id=#{currency_id},
+			gmt_create=now()
+		where
+			symbol=#{symbol}
+	</update>
+	
+</mapper>

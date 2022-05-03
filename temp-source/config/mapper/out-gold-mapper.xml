@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.OutGoldMapper">
+
+	<!-- 
+	<select id="queryOutGold" resultType="com.alibaba.fastjson.JSONObject">
+		SELECT Deal, Login, Profit,
+			date_format(Time, '%Y-%m-%d %T') AS TimeFmt,
+			( SELECT name FROM t_sys_manager WHERE login = t.Login ) AS NAME
+		FROM
+			mt5_deals t
+		<where>
+			Action = 2
+			and Profit  <![CDATA[<]]> 0 
+			<if test="login != null and login != ''">
+				and Login = #{login}
+			</if>
+			<if test="ticket != null and ticket != ''">
+				and Deal = #{ticket}
+			</if>
+			<if test="outDate != null and outDate != ''">
+				and date_format(Time, '%Y-%m-%d') = #{outDate}
+			</if>
+		</where>
+	</select>
+	 -->
+	 
+	<select id="queryOutGold" resultType="com.alibaba.fastjson.JSONObject">
+		select
+			id, dollar, state, 
+			(select login from t_sys_manager where managerid = t.managerid) as login,
+			(select ename from t_sys_manager where managerid = t.managerid) as ename,
+			(select account from t_sys_manager where managerid = t.managerid) as account,
+			date_format(createTime, '%Y-%m-%d %k:%i:%s') AS createTimeFmt
+		from
+			t_sys_out_gold t
+		<where>
+			<if test="login != null and login != ''">
+				and managerid = (select managerid from t_sys_manager where login = #{login}) 
+			</if>
+			<if test="outDate != null and outDate != ''">
+				and date_format(createTime, '%Y-%m-%d') = #{outDate}
+			</if>
+		</where>
+	</select>
+	
+	<select id="findOutGoldTotal" resultType="com.crm.platform.entity.pub.StatisticsGoldDTO">
+		SELECT
+			IF ( isnull(sum(Profit)), 0, sum(Profit) ) AS profitTotal, count(*) AS countTotal
+		FROM
+			mt5_deals
+		<where>
+			Action = 2 
+			and Profit  <![CDATA[<]]> 0 
+			<!-- and COMMENT like '%Withdrawal%' -->
+			<if test="login != null and login != ''">
+				and Login = #{login}
+			</if>
+			<if test="ticket != null and ticket != ''">
+				and Deal = #{ticket}
+			</if>
+			<if test="outDate != null and outDate != ''">
+				and date_format(Time, '%Y-%m-%d') = #{outDate}
+			</if>
+		</where>
+	</select>
+	
+	<insert id="save">
+		insert into t_sys_out_gold
+			(managerid, money, dollar, rate, createTime, loginType)
+		values
+			(#{managerid}, #{money}, #{dollar}, #{outRate}, now(), #{loginType})
+	</insert>
+	
+	<select id="queryOutGoldReview" resultType="com.alibaba.fastjson.JSONObject">
+		select
+			id,money,state,dollar,rate,
+			(select name from t_sys_manager where managerid = t.managerid) as name,
+			(select ename from t_sys_manager where managerid = t.managerid) as ename,
+			(select bank from t_sys_manager where managerid = t.managerid) as bank,
+			(select bankCard from t_sys_manager where managerid = t.managerid) as bankCard,
+			(select login from t_sys_manager where managerid = t.managerid) as login,
+			(select `Group` from mt5_users where Login = (select login from t_sys_manager where managerid = t.managerid)) as groupName,
+			DATE_FORMAT(createTime, '%Y-%m-%d %k:%i:%s') AS createTimeFmt,
+			DATE_FORMAT(reviewTime, '%Y-%m-%d %k:%i:%s') AS reviewTimeFmt
+		from 
+			t_sys_out_gold t
+		<where>
+			<if test="outCreateDateStart != null and outCreateDateStart != ''">
+				and date_format(createTime, '%Y-%m-%d') <![CDATA[>=]]> #{outCreateDateStart}
+			</if>
+			<if test="outCreateDateEnd != null and outCreateDateEnd != ''">
+				and date_format(createTime, '%Y-%m-%d') <![CDATA[<=]]> #{outCreateDateEnd}
+			</if>
+			<if test="login != null and login != ''">
+				and t.managerid = (select managerid from t_sys_manager where login=#{login})
+			</if>
+			<if test="state != null and state != '' or state == 0">
+				and state = #{state}
+			</if>
+		</where>
+	</select>
+	
+	<select id="findOutGoldReviewTotal" resultType="com.crm.platform.entity.pub.GoldSummationVO">
+		select 
+			count(*) as countTotal,
+			if(sum(dollar) is null, 0, sum(dollar)) as dollarSum,
+			if(sum(money) is null, 0, sum(money)) as moneySum
+		from
+			t_sys_out_gold
+		<where>
+			<if test="outCreateDateStart != null and outCreateDateStart != ''">
+				and date_format(createTime, '%Y-%m-%d') <![CDATA[>=]]> #{outCreateDateStart}
+			</if>
+			<if test="outCreateDateEnd != null and outCreateDateEnd != ''">
+				and date_format(createTime, '%Y-%m-%d') <![CDATA[<=]]> #{outCreateDateEnd}
+			</if>
+			<if test="login != null and login != ''">
+				and t.managerid = (select managerid from t_sys_manager where login=#{login})
+			</if>
+			<if test="state != null and state != '' or state == 0">
+				and state = #{state}
+			</if>
+		</where>
+	</select>
+	
+	<select id="findOutGoldById" resultType="com.crm.platform.entity.pub.OutGoldDTO">
+		select 
+			*,
+			DATE_FORMAT(createTime, '%Y-%m-%d %T') AS createTimeFmt,
+			DATE_FORMAT(reviewTime, '%Y-%m-%d %T') AS reviewTimeFmt,
+			(select name from t_sys_manager where managerid = t.managerid) as name,
+			(select idcard from t_sys_manager where managerid = t.managerid) as idcard,
+			(select phone from t_sys_manager where managerid = t.managerid) as phone,
+			(select login from t_sys_manager where managerid = t.managerid) as login,
+			(select bank from t_sys_manager where managerid = t.managerid) as bank,
+			(select bankCard from t_sys_manager where managerid = t.managerid) as bankCard,
+			(select bankCardUrl from t_sys_manager where managerid = t.managerid) as bankCardUrl,
+			(select Balance from mt5_accounts where Login = (select login from t_sys_manager where managerid = t.managerid)) as balance,
+			(select rebateLogin from t_sys_manager where managerid = t.managerid) as rebateLogin,
+			(select Balance from mt5_accounts where Login = (select rebateLogin from t_sys_manager where managerid = t.managerid)) as rebateBalance,
+			(select transactionType from t_group_type where groupName = (SELECT `Group` FROM mt5_users WHERE Login = (SELECT login FROM t_sys_manager WHERE managerid = t.managerid))) as transactionType
+		from 
+			t_sys_out_gold t
+		where 
+			id = #{id}
+	</select>
+	
+	<update id="updReviewState" >
+		update
+			t_sys_out_gold
+		set 
+			state = #{state},
+			reason = #{reason},
+			reviewTime = now(),
+			transactionMoney = #{transactionMoney}
+		where
+			id = #{id}
+	</update>
+	
+	<select id="getOutRate" resultType="double">
+	  select outRate from t_exchange_rate limit 1
+	</select>
+	
+</mapper>

@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.InGoldMapper">
+
+  <!-- <select id="listInGold" resultType="com.alibaba.fastjson.JSONObject"> SELECT Deal, Profit, Login, date_format(Time, '%Y-%m-%d %T') AS TimeFmt, (SELECT NAME FROM t_sys_manager WHERE login = t.Login ) AS NAME FROM mt5_deals t <where> Action = 2 and Profit <![CDATA[>]]> 0 <if test="login != null and login != ''"> and Login = #{login} </if> <if test="ticket != null and ticket != ''"> and Deal = #{ticket} </if> <if test="inDate != null and inDate != ''"> and date_format(Time, '%Y-%m-%d') = #{inDate} </if> </where> </select> -->
+
+    <select id="listInGold" resultType="com.alibaba.fastjson.JSONObject">
+        SELECT
+            id,
+            money,
+            dollar,
+            state,
+            order_number,
+            DATE_FORMAT(createTime, '%Y-%m-%d %k:%i:%s') AS createTimeFmt,
+            (
+                SELECT
+                    login
+                FROM
+                    t_sys_manager
+                WHERE
+                    managerid = t.managerid
+            ) AS login
+        FROM
+            t_sys_in_gold t
+        <where>
+            <if test="ticket != null and ticket != ''">
+                AND id = #{ticket}
+            </if>
+            <if test="login != null and login != ''">
+                AND managerid = (SELECT managerid FROM t_sys_manager WHERE login = #{login})
+            </if>
+            <if test="inDate != null and inDate != ''">
+                AND DATE_FORMAT(createTime, '%Y-%m-%d') = #{inDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="findInGoldTotal" resultType="com.crm.platform.entity.pub.StatisticsGoldDTO">
+        SELECT
+            IF (isnull(SUM(Profit)), 0, SUM(Profit)) AS profitTotal,
+            COUNT(*) AS countTotal
+        FROM
+            mt5_deals
+        <where>
+            Action = 2 AND Profit  <![CDATA[>]]> 0
+            <if test="login != null and login != ''">
+                AND Login = #{login}
+            </if>
+            <if test="ticket != null and ticket != ''">
+                AND Deal = #{ticket}
+            </if>
+            <if test="inDate != null and inDate != ''">
+                AND date_format(Time, '%Y-%m-%d') = #{inDate}
+            </if>
+        </where>
+    </select>
+
+    <insert id="save" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO
+            t_sys_in_gold
+            (
+                money,
+                managerid,
+                createTime,
+                dollar,
+                rate,
+                channelid,
+                voucherPath,
+                payType,
+                state,
+                order_number
+            )
+        VALUES
+            (
+                #{money},
+                #{managerid},
+                now(),
+                #{dollar},
+                #{rate},
+                #{channelid},
+                #{voucherPath},
+                #{payType},
+                #{state},
+                #{orderNumber}
+            )
+    </insert>
+
+    <select id="queryInGoldReview" resultType="com.alibaba.fastjson.JSONObject">
+        SELECT
+            t.id,
+            t.money,
+            t.state,
+            t.dollar,
+            t.rate,
+            t.payType,
+            t.order_number AS orderNumber,
+            t1.name AS name,
+            t1.ename AS ename,
+            t1.login AS login,
+            (
+                SELECT
+                    `Group`
+                FROM
+                    mt5_users
+                WHERE
+                    Login = (
+                                SELECT
+                                    login
+                                FROM
+                                    t_sys_manager
+                                WHERE
+                                    managerid = t.managerid
+                            )
+            ) AS groupName,
+            DATE_FORMAT(t.createTime, '%Y-%m-%d %k:%i:%s') AS createTimeFmt,
+            DATE_FORMAT(t.reviewTime, '%Y-%m-%d %k:%i:%s') AS reviewTimeFmt
+        FROM
+            t_sys_in_gold t
+        LEFT JOIN
+            t_sys_manager t1
+        ON
+            t.managerid = t1.managerid
+        <where>
+            <if test="id != null and id != ''">
+                AND t.id = #{id}
+            </if>
+            <if test="inCreateDateStart != null and inCreateDateStart != ''">
+                AND DATE_FORMAT(t.createTime, '%Y-%m-%d') <![CDATA[>=]]> #{inCreateDateStart}
+            </if>
+            <if test="inCreateDateEnd != null and inCreateDateEnd != ''">
+                AND DATE_FORMAT(t.createTime, '%Y-%m-%d') <![CDATA[<=]]> #{inCreateDateEnd}
+            </if>
+            <if test="login != null and login != ''">
+                AND t.managerid = (SELECT managerid FROM t_sys_manager WHERE login=#{login})
+            </if>
+            <if test="state != null and state != '' or state == 0">
+                AND t.state = #{state}
+            </if>
+        </where>
+    </select>
+
+    <select id="findInGoldById" resultType="com.crm.platform.entity.pub.InGoldBO">
+        SELECT
+            id,
+            managerid,
+            money,
+            dollar,
+            rate,
+            channelid,
+            state,
+            createTime,
+            reviewTime,
+            reason,
+            transactionDollar,
+            voucherPath,
+            payType,
+            order_number AS orderNumber,
+            (
+                SELECT
+                    name
+                FROM
+                    t_sys_manager
+                WHERE
+                    managerid = t.managerid
+            ) AS name,
+            (
+                SELECT
+                    login
+                FROM
+                    t_sys_manager
+                WHERE
+                    managerid = t.managerid
+            ) AS login,
+            (
+                SELECT
+                    transactionType
+                FROM
+                    t_group_type
+                WHERE
+                    groupName = (
+                                    SELECT
+                                        `Group`
+                                    FROM
+                                        mt5_users
+                                    WHERE
+                                        Login = (
+                                                    SELECT
+                                                        login
+                                                    FROM
+                                                        t_sys_manager
+                                                    WHERE
+                                                        managerid = t.managerid
+                                                )
+                                )
+            ) AS transactionType
+        FROM
+            t_sys_in_gold t
+        WHERE
+            id = #{id}
+    </select>
+
+    <update id="updReviewState">
+        UPDATE
+            t_sys_in_gold
+        SET
+            dollar = #{dollar},
+            money = #{money},
+            rate = #{rate},
+            state = #{state},
+            reason = #{reason},
+            reviewTime = NOW(),
+            transactionDollar = #{transactionDollar},
+            order_number=#{orderNumber}
+        WHERE
+            id = #{id}
+    </update>
+
+    <select id="findRate" resultType="Double">
+        SELECT
+            rate
+        FROM
+            t_exchange_rate
+        LIMIT 1
+    </select>
+
+    <update id="updReviewStateByResult">
+        UPDATE
+            t_sys_in_gold
+        SET
+            state = #{state},
+            order_number=#{orderNumber}
+        WHERE
+            id = #{id}
+    </update>
+
+    <select id="findInGoldReviewTotal" resultType="com.crm.platform.entity.pub.GoldSummationVO">
+        SELECT
+            COUNT(*) AS countTotal,
+            IF (ISNULL(SUM(money)), 0, SUM(money)) AS moneySum,
+            IF (ISNULL(SUM(dollar)), 0, SUM(dollar)) AS dollarSum
+        FROM
+            t_sys_in_gold t
+        <where>
+            <if test="id != null and id != ''">
+                AND id = #{id}
+            </if>
+            <if test="inCreateDateStart != null and inCreateDateStart != ''">
+                AND DATE_FORMAT(createTime, '%Y-%m-%d') <![CDATA[>=]]> #{inCreateDateStart}
+            </if>
+            <if test="inCreateDateEnd != null and inCreateDateEnd != ''">
+                AND DATE_FORMAT(createTime, '%Y-%m-%d') <![CDATA[<=]]> #{inCreateDateEnd}
+            </if>
+            <if test="login != null and login != ''">
+                AND managerid = (SELECT managerid FROM t_sys_manager WHERE login=#{login})
+            </if>
+            <if test="state != null and state != '' or state == 0">
+                AND state = #{state}
+            </if>
+        </where>
+    </select>
+
+    <select id="findInGoldByOrderNumber" resultType="com.crm.platform.entity.pub.InGoldBO">
+        SELECT
+            id,
+            managerid,
+            money,
+            dollar,
+            rate,
+            channelid,
+            state,
+            createTime,
+            reviewTime,
+            reason,
+            transactionDollar,
+            voucherPath,
+            payType,
+            order_number AS orderNumber,
+            (
+                SELECT
+                    name
+                FROM
+                    t_sys_manager
+                WHERE
+                    managerid = t.managerid
+            ) AS name,
+            (
+                SELECT
+                    login
+                FROM
+                    t_sys_manager
+                WHERE
+                    managerid = t.managerid
+            ) AS login,
+            (
+                SELECT
+                    transactionType
+                FROM
+                    t_group_type
+                WHERE
+                    groupName = (
+                                    SELECT
+                                        `Group`
+                                    FROM
+                                        mt5_users
+                                    WHERE
+                                        Login = (
+                                                    SELECT
+                                                        login
+                                                    FROM
+                                                        t_sys_manager
+                                                    WHERE
+                                                        managerid = t.managerid
+                                                )
+                                )
+            ) AS transactionType
+        FROM
+            t_sys_in_gold t
+        WHERE
+            order_number = #{orderNumber}
+    </select>
+
+</mapper>

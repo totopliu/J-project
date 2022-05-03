@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.ManagerMapper">
+  <!-- <cache eviction="LRU" flushInterval="60000" size="1024" readOnly="true" /> -->
+
+  <select id="queryManagerForList" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+      managerid AS id, name, account, locked, reviewState, phone, login, type, level, ename,
+      DATE_FORMAT(createtime,'%Y-%m-%d %H:%i') AS time,
+      (SELECT name FROM t_sys_role WHERE id = t.role ) AS rolename,
+      (SELECT Leverage FROM mt5_users WHERE Login = t.login) AS Leverage,
+      (SELECT Balance FROM mt5_accounts WHERE Login = t.login) AS Balance,
+      (SELECT Equity FROM mt5_accounts WHERE Login = t.login) AS Equity,
+      (SELECT `Group` FROM mt5_users WHERE Login = t.login) AS loginGroup
+    FROM
+      t_sys_manager t
+    <where>
+      <if test="name != null and name != ''">
+        AND ename LIKE concat(concat('%', #{name}), '%')
+      </if>
+      <if test="login != null and login != ''">
+        AND login = #{login}
+      </if>
+    </where>
+  </select>
+
+  <update id="update" parameterType="com.crm.platform.entity.pub.ManagerEntity">
+    UPDATE t_sys_manager
+    SET
+      lastloginip = #{lastloginip},
+      lastlogintime = #{lastlogintime}
+    WHERE
+      managerid = #{managerid}
+  </update>
+
+  <select id="checkAccount" parameterType="com.crm.platform.entity.pub.ManagerEntity" resultType="Integer">
+    SELECT count(*) FROM t_sys_manager WHERE account=#{account}
+  </select>
+
+  <select id="checkAccountWithoutSelf" resultType="Integer">
+    SELECT count(*) FROM t_sys_manager WHERE account=#{account} AND managerid != #{managerid}
+  </select>
+
+  <select id="countReview" parameterType="com.crm.platform.entity.pub.ManagerEntity" resultType="Integer">
+    SELECT reviewState FROM t_sys_manager WHERE account=#{account}
+  </select>
+
+  <select id="queryManagerForListToReview" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+      t.managerid AS id, name, account, phone, email, reviewState, reviewReason,
+      DATE_FORMAT(t.createtime,'%Y-%m-%d %H:%i') AS ctime,
+      (SELECT name FROM t_sys_manager WHERE managerid = t.belongid) AS parentName
+    FROM
+      t_sys_manager t
+    <where>
+      <if test="name != null and name != ''">
+        AND t.name = #{name}
+      </if>
+      <if test="account != null and account != ''">
+        AND t.account = #{account}
+      </if>
+    </where>
+  </select>
+
+  <select id="queryManagerForListToUnderling" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+      t.managerid AS id, name, account, phone, login, rebateLogin, ename, type, level, reviewState,
+      (SELECT `Group` FROM mt5_users WHERE Login = t.login) AS groupName,
+      (SELECT `Group` FROM mt5_users WHERE Login = t.rebateLogin) AS rebateGroupName,
+      DATE_FORMAT(createtime,'%Y-%m-%d %H:%i') AS createTimeFmt,
+      (SELECT Balance FROM mt5_accounts WHERE Login = t.login) AS balance,
+      (SELECT Balance FROM mt5_accounts WHERE Login = t.rebateLogin) AS rebateBalance,
+      (SELECT name FROM t_sys_manager WHERE managerid = t.belongid) AS belongName,
+      (SELECT ename FROM t_sys_manager WHERE managerid = t.belongid) AS belongEname
+    FROM
+      t_sys_manager t
+    <where>
+      managerid IN (${managerids})
+      <if test="name != null and name != ''">
+        AND name LIKE concat(concat('%', #{name}), '%')
+      </if>
+      <if test="phone != null and phone != ''">
+        AND phone LIKE concat(concat('%', #{phone}), '%')
+      </if>
+      <if test="account != null and account != ''">
+        AND account LIKE concat(concat('%', #{account}), '%')
+      </if>
+      <if test="login != null and login != ''">
+        AND login = #{login}
+      </if>
+      <if test="type != null and type != '' or type == 0">
+        AND type = #{type}
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND date_format(createtime,'%Y-%m-%d %H:%i') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND date_format(createtime,'%Y-%m-%d %H:%i') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+    </where>
+  </select>
+
+  <select id="getUnderlingTotal" resultType="com.crm.platform.entity.pub.UnderlingTotalVO">
+    SELECT
+      COUNT(t.type = 0 or null) AS userCount,
+      COUNT(t.type = 1 or null) AS agentCount
+    FROM
+      t_sys_manager t
+    <where>
+      managerid IN (${managerids})
+      <if test="name != null and name != ''">
+        AND name LIKE concat(concat('%', #{name}), '%')
+      </if>
+      <if test="phone != null and phone != ''">
+        AND phone LIKE concat(concat('%', #{phone}), '%')
+      </if>
+      <if test="account != null and account != ''">
+        AND account LIKE concat(concat('%', #{account}), '%')
+      </if>
+      <if test="login != null and login != ''">
+        AND login = #{login}
+      </if>
+      <if test="type != null and type != '' or type == 0">
+        AND type = #{type}
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND DATE_FORMAT(createtime,'%Y-%m-%d %H:%i') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND DATE_FORMAT(createtime,'%Y-%m-%d %H:%i') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+    </where>
+  </select>
+
+  <select id="getUnderlingAgentTotal" resultType="com.crm.platform.entity.pub.UnderlingAgentTotalVO">
+    SELECT
+      level, COUNT(*) AS agentCount
+    FROM
+      t_sys_manager t
+    <where>
+      managerid IN (${managerids}) AND level IS NOT null
+      <if test="name != null and name != ''">
+        AND name LIKE concat(concat('%', #{name}), '%')
+      </if>
+      <if test="phone != null and phone != ''">
+        AND phone LIKE concat(concat('%', #{phone}), '%')
+      </if>
+      <if test="account != null and account != ''">
+        AND account LIKE concat(concat('%', #{account}), '%')
+      </if>
+      <if test="login != null and login != ''">
+        AND login = #{login}
+      </if>
+      <if test="type != null and type != '' or type == 0">
+        AND type = #{type}
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND DATE_FORMAT(createtime,'%Y-%m-%d %H:%i') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND date_format(createtime,'%Y-%m-%d %H:%i') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+    </where>
+    GROUP BY 
+      level
+    ORDER BY 
+      level
+  </select>
+
+  <select id="selectByPrimaryKeyToReview" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+      *,
+      (SELECT name FROM t_sys_role WHERE id = t.role) AS rolename,
+      (SELECT name FROM t_sys_manager WHERE managerid = t.belongid) AS belongName,
+      (SELECT level FROM t_sys_manager WHERE managerid = t.belongid) AS belongLevel,
+      (SELECT `Group` FROM mt5_users WHERE Login = (SELECT login FROM t_sys_manager WHERE managerid = t.belongid)) AS belongGroup
+    FROM
+      t_sys_manager t
+    WHERE
+      managerid=#{managerid}
+  </select>
+
+  <select id="findUnderlingList" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+      managerid, name
+    FROM
+      t_sys_manager
+    WHERE
+      belongid=#{managerid}
+    AND locked=1
+    AND reviewState=1
+  </select>
+
+  <select id="countAdmin" resultType="Integer">
+    SELECT
+      COUNT(*)
+    FROM
+      t_sys_manager
+    WHERE
+      managerid=#{belongId}
+    AND belongid = 0
+  </select>
+
+  <select id="findUnderLingTree" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+      managerid AS val,
+      name AS text,
+      login
+    FROM
+      t_sys_manager
+    WHERE
+      belongid = #{managerid}
+    AND reviewState = 1
+  </select>
+
+  <select id="findBelongIdByLogin" resultType="com.crm.platform.entity.pub.ManagerRelAndStateBO">
+    SELECT
+      managerid, belongid, autoRebate, login, rebateLogin
+    FROM
+      t_sys_manager
+    WHERE
+      login = #{login}
+  </select>
+
+  <select id="findMidAndBidByBid" resultType="com.crm.platform.entity.pub.ManagerRelAndStateBO">
+    SELECT
+      managerid, belongid, autoRebate, login, rebateLogin
+    FROM
+      t_sys_manager
+    WHERE
+      managerid = #{belongid}
+  </select>
+
+  <select id="queryAllUnderling" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+      managerid,name,autoRebate
+    FROM
+      t_sys_manager
+    WHERE
+      locked = 1
+    AND reviewState = 1
+    AND managerid IN (${managerids})
+  </select>
+
+  <update id="updAutoRebate">
+    UPDATE t_sys_manager
+    SET
+      autoRebate = #{autoRebate}
+    WHERE
+      managerid = #{managerid}
+  </update>
+
+  <select id="findBalanceByLogin" resultType="Double">
+    SELECT
+      Balance
+    FROM
+      mt5_accounts
+    WHERE
+      Login = #{login}
+  </select>
+
+  <select id="findRebateByManagerId" resultType="Double">
+    SELECT
+      IF(ISNULL(SUM(rebate)), 0, SUM(rebate))
+    FROM
+      t_sys_manager_rebate
+    WHERE
+      managerid = #{managerid}
+    AND over = 0
+  </select>
+
+  <select id="findRebateByLogin" resultType="Double">
+    SELECT
+      IF(ISNULL(SUM(rebate)), 0, SUM(rebate))
+    FROM
+      t_sys_manager_rebate
+    WHERE
+      managerid = (SELECT managerid FROM t_sys_manager WHERE login=#{login})
+    AND over = 0
+  </select>
+
+  <select id="getPlanIdByManagerId" resultType="Integer">
+    SELECT
+      planId
+    FROM
+      t_sys_manager
+    WHERE
+      managerid = #{managerId}
+  </select>
+
+  <select id="getManagerIdByPlanAndLevel" resultType="Integer">
+    SELECT
+      managerid
+    FROM
+      t_sys_manager
+    WHERE
+      planId = #{planId}
+    AND planLevel = #{level}
+  </select>
+
+  <select id="listReviewedManager" resultType="com.crm.platform.entity.pub.ManagerEntity">
+    SELECT 
+      *
+    FROM
+      t_sys_manager
+    WHERE
+      locked = 1
+    AND reviewState = 1
+    AND type = 1
+  </select>
+
+  <select id="getRebateLoginByLogin" resultType="Integer">
+    SELECT
+      rebateLogin
+    FROM
+      t_sys_manager
+    WHERE
+      login = #{login}
+  </select>
+
+  <select id="getManagerRebateConfigBOByLogin" resultType="com.crm.platform.entity.pub.ManagerRebateConfigBO">
+    SELECT
+      managerid, belongid, autoRebate, login, rebateLogin, level, type,
+      (SELECT `Group` From mt5_users WHERE Login = t.login) AS groupName
+    FROM
+      t_sys_manager t
+    WHERE
+      login = #{login}
+  </select>
+
+  <select id="getManagerRebateConfigBOByManagerId" resultType="com.crm.platform.entity.pub.ManagerRebateConfigBO">
+    SELECT
+      managerid, belongid, autoRebate, login, rebateLogin, level, type,
+      (SELECT `Group` From mt5_users WHERE Login = t.login) AS groupName
+    FROM
+      t_sys_manager t
+    WHERE
+      managerid = #{managerId}
+  </select>
+
+  <select id="countSonManagerById" resultType="Integer">
+    SELECT
+      COUNT(*)
+    FROM
+      t_sys_manager
+    WHERE 
+      belongid = #{managerid}
+    AND level <![CDATA[<=]]> #{level}
+  </select>
+
+  <select id="getTransactionTypeByManagerId" resultType="Integer">
+    SELECT
+      transactionType
+    FROM
+      t_group_type
+    WHERE
+      groupName = (SELECT `Group` FROM mt5_users WHERE Login = (SELECT login FROM t_sys_manager WHERE managerid = #{managerid}))
+  </select>
+
+  <select id="getSonLoginsByLogin" resultType="Integer">
+    SELECT
+      login
+    FROM
+      t_sys_manager
+    WHERE
+      belongid = (SELECT managerid FROM t_sys_manager WHERE login = #{login})
+    AND login IS NOT NULL
+  </select>
+
+  <select id="listCountry" resultType="com.crm.platform.entity.pub.CountryDO">
+    SELECT * FROM t_country
+  </select>
+
+  <select id="listSonLoginsById" resultType="Integer">
+    SELECT
+      login
+    FROM
+      t_sys_manager
+    WHERE
+      belongid=#{managerId}
+    AND login IS NOT NULL
+  </select>
+
+</mapper>

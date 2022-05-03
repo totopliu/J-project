@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans  
+	    http://www.springframework.org/schema/beans/spring-beans.xsd   
+	    http://www.springframework.org/schema/context   
+	    http://www.springframework.org/schema/context/spring-context.xsd  
+	    http://www.springframework.org/schema/tx
+	    http://www.springframework.org/schema/tx/spring-tx.xsd
+	    http://www.springframework.org/schema/task 
+	    http://www.springframework.org/schema/task/spring-task.xsd     
+	    http://www.springframework.org/schema/aop 
+	    http://www.springframework.org/schema/aop/spring-aop.xsd"
+	default-lazy-init="false">
+
+	<!-- 定时任务驱动 -->
+	<task:annotation-driven />
+
+	<!-- 事务注解支持@Transactional -->
+	<tx:annotation-driven />
+	<context:component-scan base-package="com.crm">
+		<context:exclude-filter type="annotation"
+			expression="org.springframework.stereotype.Controller" />
+	</context:component-scan>
+
+	<bean class="com.crm.util.spring.AppContextUtil" />
+
+	<!-- 任务调度 -->
+	<bean id="schedulerFactoryBean"
+		class="org.springframework.scheduling.quartz.SchedulerFactoryBean" />
+
+	<context:property-placeholder location="classpath:*.properties" />
+
+	<!-- 阿里巴巴druid连接池 -->
+	<bean id="dataSourceProxool" class="com.alibaba.druid.pool.DruidDataSource"
+		init-method="init" destroy-method="close">
+		<property name="driverClassName" value="${database.driverClassName}" />
+		<property name="url" value="${database.url}" />
+		<property name="username" value="${database.username}" />
+		<property name="password" value="${database.password}" />
+		<property name="initialSize" value="${database.initialSize}" />
+		<property name="maxActive" value="${database.maxActive}" />
+		<property name="minIdle" value="${database.minIdle}" />
+		<property name="maxWait" value="${database.maxWait}" />
+		<property name="validationQuery" value="${database.validationQuery}" />
+		<property name="testOnBorrow" value="${database.testOnBorrow}" />
+		<property name="testOnReturn" value="${database.testOnReturn}" />
+		<property name="testWhileIdle" value="${database.testWhileIdle}" />
+		<property name="timeBetweenEvictionRunsMillis" value="${database.timeBetweenEvictionRunsMillis}" />
+		<property name="filters" value="${database.filters}" />
+		<!-- 配置监控统计拦截的filters -->
+		<property name="proxyFilters">
+			<list>
+				<ref bean="stat-filter" />
+			</list>
+		</property>
+	</bean>
+
+	<bean id="stat-filter" class="com.alibaba.druid.filter.stat.StatFilter">
+		<!--慢SQL统计，如果SQL执行时间超过一定时间则记录为慢SQL -->
+		<property name="slowSqlMillis" value="3000" />
+		<!--慢SQL统计日志输出 -->
+		<property name="logSlowSql" value="true" />
+		<!--合并SQL统计 例如select * from table t where t.id =1，会被变为select * from table 
+			t where t.id =？来统计 -->
+		<property name="mergeSql" value="true" />
+	</bean>
+
+	<!-- 应用与SQL监控 -->
+	<bean id="druid-stat-interceptor"
+		class="com.alibaba.druid.support.spring.stat.DruidStatInterceptor" />
+
+	<bean id="druid-stat-pointcut" class="org.springframework.aop.support.JdkRegexpMethodPointcut"
+		scope="prototype">
+		<property name="patterns">
+			<list>
+				<value>com.crm.platform.service.*</value>
+				<value>com.crm.platform.mapper.*</value>
+			</list>
+		</property>
+	</bean>
+
+	<aop:config>
+		<aop:advisor advice-ref="druid-stat-interceptor"
+			pointcut-ref="druid-stat-pointcut" />
+	</aop:config>
+
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSourceProxool" />
+		<property name="mapperLocations">
+			<array>
+				<value>classpath:mapper/*.xml</value>
+			</array>
+		</property>
+		<property name="typeAliasesPackage" value="com.crm.platform.entity" />
+		<property name="plugins">
+			<array>
+				<bean class="com.github.pagehelper.PageHelper">
+					<property name="properties">
+						<value>
+							dialect=mysql
+							returnPageInfo=check
+						</value>
+					</property>
+				</bean>
+			</array>
+		</property>
+	</bean>
+
+	<!-- 自动扫描 将Mapper接口生成代理注入到Spring -->
+	<bean class="tk.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.crm.platform.mapper" />
+		<property name="properties">
+			<value>
+				mappers=tk.mybatis.mapper.common.Mapper
+				style=normal<!-- 默认驼峰命名:此处修改为原值,意欲着POJO与SQL对应,可以再POJO加@NameStyle单独处理 -->
+			</value>
+		</property>
+	</bean>
+
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate"
+		scope="prototype">
+		<constructor-arg index="0" ref="sqlSessionFactory" />
+	</bean>
+
+	<bean name="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSourceProxool" />
+	</bean>
+
+	<!-- 标注类型 的事务配置 如果使用注解事务。就放开 -->
+	<tx:annotation-driven transaction-manager="transactionManager"
+		proxy-target-class="true" />
+
+	<bean id="fileRepository" class="com.crm.util.upload.FileRepository"
+		init-method="init" />
+
+	<!-- 统一异常处理 -->
+	<bean class="com.crm.util.exception.MyExceptionHandler" />
+
+	<!-- <import resource="spring-redis.xml" /> -->
+</beans>

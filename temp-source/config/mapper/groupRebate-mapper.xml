@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.GroupRebateMapper">
+
+  <delete id="removeByGroupName">
+    DELETE FROM t_group_rebate WHERE groupName = #{groupName}
+  </delete>
+
+  <insert id="save">
+    INSERT INTO t_group_rebate
+    (groupName, level, currencyId, fixed, point)
+    VALUES
+    (#{groupName}, #{level}, #{currencyId}, #{fixed}, #{point})
+  </insert>
+
+  <select id="getLevelsByGroupName" resultType="Integer">
+    SELECT distinct level FROM t_group_rebate WHERE groupName = #{groupName} ORDER BY level asc
+  </select>
+
+  <select id="getGroupRebateCurrency" resultType="com.crm.platform.entity.pub.GroupRebateCurrencyDTO">
+    SELECT currencyId, fixed, point FROM t_group_rebate WHERE groupName = #{groupName} AND level = #{level}
+  </select>
+
+  <select id="getGroupRebateByAttr" resultType="com.crm.platform.entity.pub.GroupRebateVO">
+    SELECT * FROM t_group_rebate WHERE groupName = #{groupName} AND level = #{level} AND currencyId = #{currencyId}
+  </select>
+
+</mapper>

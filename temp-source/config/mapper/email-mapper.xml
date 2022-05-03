@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.EmailTempMapper">
+
+  <select id="listEmailTemp" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT *, DATE_FORMAT(createTime,'%Y-%m-%d %H:%i:%s') AS createTimeCol,
+    DATE_FORMAT(modifyTime,'%Y-%m-%d %H:%i:%s') as modifyTimeCol
+    FROM t_sys_email
+  </select>
+
+  <select id="getById" resultType="com.crm.platform.entity.pub.EmailTempDO">
+    SELECT id, code, effect, title, content, etitle, econtent
+    FROM t_sys_email WHERE id = #{id}
+  </select>
+
+  <update id="updateById">
+    UPDATE t_sys_email
+    <set>
+      title = #{title}, content=#{content}, modifyTime = NOW(),
+      etitle = #{etitle}, econtent=#{econtent}
+    </set>
+    <where>
+      id = #{id}
+    </where>
+  </update>
+
+  <select id="fingByCode" resultType="com.crm.platform.entity.pub.EmailTempDO">
+    SELECT id, code, effect, title, content, etitle, econtent
+    FROM t_sys_email
+    <where>
+      code = #{code}
+    </where>
+  </select>
+
+  <select id="getEmailSetting" resultType="com.crm.platform.entity.pub.EmailSettingDO">
+    SELECT * FROM t_sys_email_setting LIMIT 1
+  </select>
+
+  <update id="updateEmailSetting">
+    UPDATE t_sys_email_setting
+    <set>
+      smtpServer = #{smtpServer},
+      mailAccount = #{mailAccount},
+      mailPassword = #{mailPassword}
+    </set>
+  </update>
+
+</mapper>

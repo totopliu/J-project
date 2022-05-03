@@ -1,0 +1,68 @@
+@CHARSET "UTF-8";
+
+.crm-head {
+	width: 100%;
+	height: 60px;
+	background-color: #293949;
+	border-bottom: 1px solid #1f1f1f;
+}
+
+.crm-title {
+	float: left;
+}
+
+.crm-title img {
+	margin: 20px 0 0 20px;
+}
+
+.title-menu {
+	float: right;
+	height: 100%;
+	width: 70px;
+	color: #fff;
+}
+
+.title-menu:hover {
+	background-color: #1ABC9C;
+	cursor: pointer;
+}
+
+.title-menu-icon {
+	font-size: 18px;
+	text-align: center;
+	margin-top: 5px;
+}
+
+.title-menu-name {
+	margin-top: 5px;
+	width: 100%;
+	text-align: center;
+	font-size: 10px;
+}
+
+.title-menu-line {
+	float: right;
+	height: 100%;
+	width: 1px;
+	background-color: #888;
+	height: 100%;
+}
+
+.title-pic {
+	float: right;
+	width: 50px;
+	margin: 8px 20px 0 20px;
+}
+
+.title-content {
+	font-size: 10px;
+	float: right;
+	height: 100%;
+	width: 160px;
+	margin-right: 20px;
+}
+
+.title-content-name {
+	margin-top: 10px;
+	color: #fff;
+}

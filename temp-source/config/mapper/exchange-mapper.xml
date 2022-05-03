@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.ExchangeMapper">
+
+    <select id="getRate" resultType="double">
+        SELECT
+            rate
+        FROM
+            t_exchange_rate
+        LIMIT 1
+    </select>
+
+    <select id="countRate" resultType="Integer">
+        SELECT
+            COUNT(1)
+        FROM
+            t_exchange_rate
+    </select>
+
+    <update id="updRate">
+        UPDATE
+            t_exchange_rate
+        SET
+            rate = #{rate},
+            outRate = #{outRate}
+    </update>
+    
+    <insert id="saveRate">
+        INSERT INTO
+            t_exchange_rate
+            (rate, outRate)
+        VALUES
+            (#{rate}, #{outRate})
+    </insert>
+
+    <select id="getOutRate" resultType="double">
+        SELECT
+            outRate
+        FROM
+            t_exchange_rate
+        LIMIT 1
+    </select>
+
+    <select id="getExchangeRateDTO" resultType="com.crm.platform.entity.pub.ExchangeRateDTO">
+        SELECT
+            rate,
+            outRate
+        FROM
+            t_exchange_rate
+        LIMIT 1
+    </select>
+
+</mapper>

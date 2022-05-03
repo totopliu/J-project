@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.CustomersReportMapper">
+
+  <select id="listAgentData" resultType="com.crm.platform.entity.pub.CustomersReportVO">
+    SELECT
+      `level`, COUNT(*) AS amount,
+      (SELECT COUNT(*) FROM mt5_deals
+        WHERE Entry = 1 AND Action <![CDATA[<]]> 2 AND Login IN (SELECT login FROM t_sys_manager WHERE `level` = t.`level`)
+      ) AS dealCount,
+      (SELECT IF(ISNULL(SUM(Volume)), 0, SUM(Volume)) FROM mt5_deals
+        WHERE Entry = 1 AND Action <![CDATA[<]]> 2 AND Login IN (SELECT login FROM t_sys_manager WHERE `level` = t.`level`)
+      ) AS volume,
+      (SELECT COUNT(*) FROM mt5_deals
+        WHERE Action = 2 AND Profit <![CDATA[>]]> 0 AND Login IN (SELECT login FROM t_sys_manager WHERE level = t.`level`)
+      ) AS inCount,
+      (SELECT ROUND(IF(ISNULL(SUM(Profit)), 0, SUM(Profit)), 2) FROM mt5_deals
+        WHERE Action = 2 AND Profit <![CDATA[>]]> 0 AND Login IN (SELECT login FROM t_sys_manager WHERE level = t.`level`)
+      ) AS inSum,
+      (SELECT COUNT(*) FROM mt5_deals
+        WHERE Action = 2 AND Profit <![CDATA[<]]> 0 AND Login IN (SELECT login FROM t_sys_manager WHERE level = t.`level`)
+      ) AS outCount,
+      (SELECT ROUND(IF(ISNULL(SUM(Profit)), 0, SUM(Profit)), 2) FROM mt5_deals
+        WHERE Action = 2 AND Profit <![CDATA[<]]> 0 AND Login IN (SELECT login FROM t_sys_manager WHERE level = t.`level`)
+      ) AS outSum,
+      (SELECT ROUND(IF(ISNULL(SUM(Profit)), 0, SUM(Profit)), 2) FROM mt5_deals
+        WHERE Entry = 1 AND Action <![CDATA[<]]> 2 AND Login IN (SELECT login FROM t_sys_manager WHERE level = t.`level`)
+      ) AS profit,
+      (SELECT ROUND(IF(ISNULL(SUM(rebate)), 0, SUM(rebate)), 2) FROM t_sys_manager_rebate
+        WHERE managerid IN (SELECT managerid FROM t_sys_manager WHERE level = t.`level`)
+      ) AS rebate
+    FROM
+      t_sys_manager t
+    WHERE
+      type = 1
+    GROUP BY
+      `level`
+    ORDER BY
+      `level`
+  </select>
+
+</mapper>

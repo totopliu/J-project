@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.TradesMapper">
+
+  <resultMap type="com.crm.platform.entity.pub.StatisticsTradesDTO" id="StatisticsTradesDTO">
+    <result column="profitTotal" property="profitTotal" />
+    <result column="volumeTotal" property="volumeTotal" />
+  </resultMap>
+
+
+  <select id="queryHoldTradesList" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT 
+    Position, Login, Symbol, Action, Profit, Volume, PriceSL, PriceTP, Comment, Storage,
+    ROUND(PriceOpen, Digits) AS PriceOpen, ROUND(PriceCurrent, Digits) as PriceCurrent,
+    DATE_FORMAT(TimeCreate, '%Y-%m-%d %T') AS TimeCreateFmt,
+    (SELECT ename FROM t_sys_manager WHERE login = t.Login) AS ename,
+    (SELECT Commission FROM mt5_deals WHERE PositionID = t.Position) AS Commission
+    FROM mt5_positions t
+    <where>
+      Login IN (SELECT login FROM t_sys_manager WHERE login IS NOT NULL)
+      <if test="account != null and account != ''">
+        AND Login = (SELECT login FROM t_sys_manager WHERE account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        AND Login = #{loginFlt}
+      </if>
+      <if test="positon != null and positon != ''">
+        AND Position = #{positon}
+      </if>
+      <if test="profitStart != null and profitStart != ''">
+        AND Profit <![CDATA[>=]]> #{profitStart}
+      </if>
+      <if test="profitEnd != null and profitEnd != ''">
+        AND Profit <![CDATA[<=]]> #{profitEnd}
+      </if>
+      <if test="priceGroup != null and priceGroup != ''">
+        AND Symbol IN (SELECT symbol FROM t_sys_currency_prices WHERE currency_id = #{priceGroup})
+      </if>
+      <if test="action != null and action != ''">
+        AND Action = #{action}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND DATE_FORMAT(TimeCreate, '%Y-%m-%d') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND DATE_FORMAT(TimeCreate, '%Y-%m-%d') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+      <if test="logins != null and logins != ''">
+        AND Login IN (${logins})
+      </if>
+    </where>
+  </select>
+
+  <select id="queryFinishTradesList" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+    Login, Symbol, Action, Volume, Profit, PositionID, Storage, Commission, Entry,
+    ROUND(Price, Digits) AS Price, ROUND(PricePosition, Digits) AS PricePosition,
+    DATE_FORMAT(Time, '%Y-%m-%d %T') AS TimeFmt,
+    (SELECT ename FROM t_sys_manager WHERE login = t.Login) AS ename
+    FROM mt5_deals t
+    <where>
+      Action <![CDATA[<]]> 2 AND Login IN (SELECT login FROM t_sys_manager WHERE login IS NOT NULL)
+      <if test="positon != null and positon != ''">
+        AND PositionID = #{positon}
+      </if>
+      <if test="account != null and account != ''">
+        AND Login = (SELECT login FROM t_sys_manager WHERE account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        AND Login = #{loginFlt}
+      </if>
+      <if test="profitStart != null and profitStart != ''">
+        AND Profit <![CDATA[>=]]> #{profitStart}
+      </if>
+      <if test="profitEnd != null and profitEnd != ''">
+        AND Profit <![CDATA[<=]]> #{profitEnd}
+      </if>
+      <if test="priceGroup != null and priceGroup != ''">
+        AND Symbol IN (SELECT symbol FROM t_sys_currency_prices WHERE currency_id = #{priceGroup})
+      </if>
+      <if test="action != null and action != ''">
+        AND Action = #{action}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+      <if test="logins != null and logins != ''">
+        AND Login IN (${logins})
+      </if>
+    </where>
+  </select>
+
+  <select id="countFinishTotal" resultType="com.crm.platform.entity.pub.TardeTotalVO">
+    SELECT
+    IF (ISNULL(sum(Volume)), 0, sum(Volume)) AS tradeVolumSum,
+    COUNT(*) AS tradeCount,
+    IF (ISNULL(sum(Commission)), 0, sum(Commission)) AS commissionSum,
+    IF (ISNULL(sum(Storage)), 0, sum(Storage)) AS storageSum,
+    IF (ISNULL(sum(Profit)), 0, sum(Profit)) AS tradeProfitSum
+    FROM mt5_deals t
+    <where>
+      Entry = 1 AND Action <![CDATA[<]]> 2 AND Login IN (SELECT login FROM t_sys_manager WHERE login IS NOT NULL)
+      <if test="positon != null and positon != ''">
+        AND PositionID = #{positon}
+      </if>
+      <if test="account != null and account != ''">
+        AND Login = (SELECT login FROM t_sys_manager WHERE account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        AND Login = #{loginFlt}
+      </if>
+      <if test="profitStart != null and profitStart != ''">
+        AND Profit <![CDATA[>=]]> #{profitStart}
+      </if>
+      <if test="profitEnd != null and profitEnd != ''">
+        AND Profit <![CDATA[<=]]> #{profitEnd}
+      </if>
+      <if test="priceGroup != null and priceGroup != ''">
+        AND Symbol IN (SELECT symbol FROM t_sys_currency_prices WHERE currency_id = #{priceGroup})
+      </if>
+      <if test="action != null and action != ''">
+        AND Action = #{action}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+      <if test="logins != null and logins != ''">
+        AND Login IN (${logins})
+      </if>
+    </where>
+  </select>
+
+  <select id="getTradeAllProfitSum" resultType="Double">
+    SELECT IF(ISNULL(SUM(Profit)), 0, SUM(Profit))
+    FROM mt5_deals t
+    <where>
+      Action = 2
+      <if test="positon != null and positon != ''">
+        AND PositionID = #{positon}
+      </if>
+      <if test="account != null and account != ''">
+        AND Login = (SELECT login FROM t_sys_manager WHERE account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        AND Login = #{loginFlt}
+      </if>
+      <if test="profitStart != null and profitStart != ''">
+        AND Profit <![CDATA[>=]]> #{profitStart}
+      </if>
+      <if test="profitEnd != null and profitEnd != ''">
+        AND Profit <![CDATA[<=]]> #{profitEnd}
+      </if>
+      <if test="priceGroup != null and priceGroup != ''">
+        AND Symbol IN (SELECT symbol FROM t_sys_currency_prices WHERE currency_id = #{priceGroup})
+      </if>
+      <if test="action != null and action != ''">
+        AND Action = #{action}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+      <if test="logins != null and logins != ''">
+        AND Login IN (${logins})
+      </if>
+    </where>
+  </select>
+
+  <select id="getInCount" resultType="Integer">
+    SELECT COUNT(*) FROM mt5_deals t
+    <where>
+      Action = 2 AND Profit <![CDATA[>]]> 0 AND Comment LIKE '%Deposit%'
+      <if test="positon != null and positon != ''">
+        AND PositionID = #{positon}
+      </if>
+      <if test="account != null and account != ''">
+        AND Login = (SELECT login FROM t_sys_manager WHERE account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        AND Login = #{loginFlt}
+      </if>
+      <if test="profitStart != null and profitStart != ''">
+        AND Profit <![CDATA[>=]]> #{profitStart}
+      </if>
+      <if test="profitEnd != null and profitEnd != ''">
+        AND Profit <![CDATA[<=]]> #{profitEnd}
+      </if>
+      <if test="priceGroup != null and priceGroup != ''">
+        AND Symbol IN (SELECT symbol FROM t_sys_currency_prices WHERE currency_id = #{priceGroup})
+      </if>
+      <if test="action != null and action != ''">
+        AND Action = #{action}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+      <if test="logins != null and logins != ''">
+        AND Login IN (${logins})
+      </if>
+    </where>
+  </select>
+
+  <select id="getInGoldSum" resultType="Double">
+    SELECT IF(ISNULL(SUM(Profit)), 0, SUM(Profit))
+    FROM mt5_deals t
+    <where>
+      Action = 2 and Profit <![CDATA[>]]> 0
+      <if test="positon != null and positon != ''">
+        and PositionID = #{positon}
+      </if>
+      <if test="account != null and account != ''">
+        and Login = (select login from t_sys_manager where account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        and Login = #{loginFlt}
+      </if>
+      <if test="profitStart != null and profitStart != ''">
+        and Profit <![CDATA[>=]]>
+        #{profitStart}
+      </if>
+      <if test="profitEnd != null and profitEnd != ''">
+        and Profit <![CDATA[<=]]>
+        #{profitEnd}
+      </if>
+      <if test="priceGroup != null and priceGroup != ''">
+        and Symbol in (select symbol from t_sys_currency_prices where currency_id = #{priceGroup})
+      </if>
+      <if test="action != null and action != ''">
+        and Action = #{action}
+      </if>
+      <if test="group != null and group != ''">
+        and Login in (select Login from mt5_users where `Group` = #{group})
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        and date_format(Time, '%Y-%m-%d') <![CDATA[>=]]>
+        #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        and date_format(Time, '%Y-%m-%d') <![CDATA[<=]]>
+        #{createTimeEnd}
+      </if>
+      <if test="logins != null and logins != ''">
+        and Login in (${logins})
+      </if>
+    </where>
+  </select>
+
+  <select id="getOutGoldSum" resultType="Double">
+    SELECT IF (ISNULL(SUM(Profit)), 0, SUM(Profit))
+    FROM mt5_deals t
+    <where>
+      Action = 2 and Profit <![CDATA[<]]> 0
+      <if test="positon != null and positon != ''">
+        AND PositionID = #{positon}
+      </if>
+      <if test="account != null and account != ''">
+        AND Login = (SELECT login FROM t_sys_manager WHERE account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        AND Login = #{loginFlt}
+      </if>
+      <if test="profitStart != null and profitStart != ''">
+        AND Profit <![CDATA[>=]]> #{profitStart}
+      </if>
+      <if test="profitEnd != null and profitEnd != ''">
+        AND Profit <![CDATA[<=]]> #{profitEnd}
+      </if>
+      <if test="priceGroup != null and priceGroup != ''">
+        AND Symbol IN (SELECT symbol FROM t_sys_currency_prices WHERE currency_id = #{priceGroup})
+      </if>
+      <if test="action != null and action != ''">
+        AND Action = #{action}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="createTimeStart != null and createTimeStart != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null and createTimeEnd != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+      <if test="logins != null and logins != ''">
+        AND Login IN (${logins})
+      </if>
+    </where>
+  </select>
+
+  <select id="findTempTime" resultType="Date">
+    SELECT tempTime FROM t_temp_time
+  </select>
+
+  <update id="updTempTime">
+    UPDATE t_temp_time
+    <set>
+      tempTime = #{tempTime}
+    </set>
+  </update>
+
+  <resultMap type="com.crm.platform.entity.pub.TradesToRebateEntity" id="TradesToRebateEntity">
+    <result column="Deal" property="deal" />
+    <result column="Login" property="login" />
+    <result column="VolumeFmt" property="volume" />
+    <result column="Time" property="time" />
+    <result column="Symobl" property="symbol" />
+  </resultMap>
+
+  <select id="findTradesByCloseTime" resultMap="TradesToRebateEntity">
+    SELECT Deal, Login, Volume / 10000 AS VolumeFmt, Symbol, Time
+    FROM mt5_deals
+    WHERE Entry = 1 AND Action <![CDATA[<]]> 2 AND Time <![CDATA[>]]> #{tempTime}
+    ORDER BY Time ASC
+  </select>
+
+  <insert id="insertManagerRebate">
+    INSERT INTO t_sys_manager_rebate
+    (managerid, fixed, point, rebate, createTime)
+    VALUES
+    (#{managerid}, #{fixed}, #{point}, #{rebate}, now())
+  </insert>
+
+  <select id="queryStatistics" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+    DATE_FORMAT(Time, '%Y-%m-%d') dTime,
+    COUNT(CASE WHEN Action<![CDATA[<]]>2 THEN 1 ELSE NULL END) dealAmount,
+    SUM(CASE WHEN Action<![CDATA[<]]>2 THEN Volume ELSE 0 END) dealVolume,
+    COUNT(CASE WHEN Action=2 AND Profit <![CDATA[>]]> 0 THEN 1 ELSE NULL END) inCount,
+    SUM(CASE WHEN Action=2 AND Profit <![CDATA[>]]> 0 THEN Profit ELSE 0 END) inSum,
+    COUNT(CASE WHEN Action=2 AND Profit <![CDATA[<]]> 0 THEN 1 ELSE NULL END) outCount,
+    SUM(CASE WHEN Action=2 AND Profit <![CDATA[<]]> 0 THEN Profit ELSE 0 END) outSum,
+    SUM(CASE WHEN Action<![CDATA[<]]>2 THEN Profit ELSE 0 END) profit,
+    (SELECT SUM(rebate) FROM t_sys_manager_rebate WHERE DATE_FORMAT(createTime, '%Y-%m-%d')=dTime) rebateSum,
+    (SELECT COUNT(*) FROM t_sys_manager WHERE login IS NOT NULL AND DATE_FORMAT(createTime, '%Y-%m-%d')<![CDATA[<]]>dTime) userCount
+    FROM mt5_deals t
+    <where>
+      Login IN (SELECT login FROM t_sys_manager WHERE login IS NOT NULL)
+      <if test="login!=null and login!=''">
+        AND Login = #{login}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="startTime != null and startTime != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[>=]]> #{startTime}
+      </if>
+      <if test="endTime != null and endTime != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[<=]]> #{endTime}
+      </if>
+    </where>
+    GROUP BY dTime ORDER BY dTime DESC
+  </select>
+
+  <select id="summary" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+    COUNT(CASE WHEN Action<![CDATA[<]]>2 THEN 1 ELSE NULL END) dealAmount,
+    SUM(CASE WHEN Action<![CDATA[<]]>2 THEN Volume ELSE 0 END) dealVolume,
+    COUNT(CASE WHEN Action=2 AND Profit <![CDATA[>]]> 0 THEN 1 ELSE NULL END) inCount,
+    SUM(CASE WHEN Action=2 AND Profit <![CDATA[>]]> 0 THEN Profit ELSE 0 END) inSum,
+    COUNT(CASE WHEN Action=2 AND Profit <![CDATA[<]]> 0 THEN 1 ELSE NULL END) outCount,
+    SUM(CASE WHEN Action=2 AND Profit <![CDATA[<]]> 0 THEN Profit ELSE 0 END) outSum,
+    SUM(CASE WHEN Action<![CDATA[<]]>2 THEN Profit ELSE 0 END) profit,
+    (SELECT SUM(rebate) FROM t_sys_manager_rebate) rebateSum
+    FROM mt5_deals t
+    <where>
+      Login IN (SELECT login FROM t_sys_manager WHERE login IS NOT NULL)
+      <if test="login!=null and login!=''">
+        AND Login = #{login}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="startTime != null and startTime != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[>=]]> #{startTime}
+      </if>
+      <if test="endTime != null and endTime != ''">
+        AND DATE_FORMAT(Time, '%Y-%m-%d') <![CDATA[<=]]> #{endTime}
+      </if>
+    </where>
+  </select>
+
+  <select id="getBalanceSum" resultType="Double">
+    SELECT IF (ISNULL(SUM(Balance)), 0, SUM(Balance))
+    FROM mt5_accounts t
+    <where>
+      <if test="account != null and account != ''">
+        AND Login = (SELECT login FROM t_sys_manager WHERE account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        AND Login = #{loginFlt}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="logins != null and logins != ''">
+        AND Login IN (${logins})
+      </if>
+    </where>
+  </select>
+  
+  <select id="getEquitySum" resultType="Double">
+    SELECT IF (ISNULL(SUM(Equity)), 0, SUM(Equity))
+    FROM mt5_accounts t
+    <where>
+      <if test="account != null and account != ''">
+        AND Login = (SELECT login FROM t_sys_manager WHERE account = #{account})
+      </if>
+      <if test="loginFlt != null and loginFlt != ''">
+        AND Login = #{loginFlt}
+      </if>
+      <if test="group != null and group != ''">
+        AND Login IN (SELECT Login FROM mt5_users WHERE `Group` = #{group})
+      </if>
+      <if test="logins != null and logins != ''">
+        AND Login IN (${logins})
+      </if>
+    </where>
+  </select>
+  
+</mapper>

@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.platform.mapper.pub.RebateMapper">
+
+  <resultMap type="com.crm.platform.entity.pub.RebateEntity" id="RebateEntity">
+    <result property="id" column="id" />
+    <result property="managerId" column="manager_id" />
+    <result property="currencyId" column="currency_id" />
+    <result property="rebateFixed" column="rebate_fixed" />
+    <result property="rebatePoint" column="rebate_point" />
+    <result property="fixed" column="fixed" />
+    <result property="bid" column="bid" />
+    <result property="relbid" column="relbid" />
+    <result property="digits" column="digits" />
+  </resultMap>
+
+  <resultMap type="com.crm.platform.entity.pub.RebatePlanSettingBO" id="RebatePlanSettingBOResult">
+    <result property="currencyId" column="currency_id" />
+    <result property="rebateFixed" column="rebate_fixed" />
+    <result property="rebatePoint" column="rebate_point" />
+  </resultMap>
+
+  <resultMap type="com.crm.platform.entity.pub.RebatePlanLevelBO" id="RebatePlanLevelBOResult">
+    <result property="id" column="id" />
+    <result property="plan_id" column="planId" />
+    <result property="level" column="level" />
+  </resultMap>
+
+  <resultMap type="com.crm.platform.entity.pub.RebatePlanCurrencyVO" id="RebatePlanCurrencyVOResult">
+    <result property="id" column="id" />
+    <result property="levelId" column="level_id" />
+    <result property="currencyId" column="currency_id" />
+    <result property="currencyName" column="currencyName" />
+    <result property="fixedRebate" column="rebate_fixed" />
+    <result property="pointRebate" column="rebate_point" />
+  </resultMap>
+
+  <select id="queryUnderlingRebateList" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT t1.id AS c_id, t1.name, t2.* ,
+    DATE_FORMAT(t2.gmt_create,'%Y-%m-%d %H:%i:%s') as gmt_create_fmt,
+    DATE_FORMAT(t2.gmt_modified,'%Y-%m-%d %H:%i:%s') as gmt_modified_fmt
+    FROM t_sys_currency t1 LEFT JOIN
+    (SELECT * FROM t_sys_rebate_setting WHERE manager_id = #{managerId}) t2 ON t1.id = t2.currency_id
+  </select>
+
+  <select id="findByCidAndMid" resultMap="RebateEntity">
+    SELECT * FROM t_sys_rebate_setting
+    <where>
+      manager_id = #{managerId} AND currency_id = #{currencyId}
+    </where>
+  </select>
+
+  <update id="updFixedById">
+    UPDATE t_sys_rebate_setting
+    <set>
+      rebate_fixed = #{rebateFixed},
+      rebate_point = NULL,
+      gmt_modified = NOW()
+    </set>
+    <where>
+      id = #{id}
+    </where>
+  </update>
+
+  <insert id="insertFixed">
+    INSERT INTO t_sys_rebate_setting
+    (manager_id, currency_id, rebate_fixed, gmt_modified, gmt_create)
+    VALUES
+    (#{managerId}, #{currencyId}, #{rebateFixed}, NOW(), NOW())
+  </insert>
+
+  <update id="updPointById">
+    UPDATE t_sys_rebate_setting
+    <set>
+      rebate_fixed = NULL,
+      rebate_point = #{rebatePoint},
+      gmt_modified = NOW()
+    </set>
+    <where>
+      id = #{id}
+    </where>
+  </update>
+
+  <insert id="insertPoint">
+    INSERT INTO t_sys_rebate_setting
+    (manager_id, currency_id, rebate_point, gmt_modified, gmt_create)
+    VALUES
+    (#{managerId}, #{currencyId}, #{rebatePoint}, NOW(), NOW())
+  </insert>
+
+  <select id="countFixed" resultType="Integer">
+    SELECT COUNT(*) FROM t_sys_rebate_setting
+    WHERE manager_id = #{belongId} AND currency_id = #{currencyId} AND rebate_fixed IS NOT NULL
+  </select>
+
+  <select id="countPoint" resultType="Integer">
+    SELECT count(*) FROM t_sys_rebate_setting 
+    WHERE manager_id = #{belongId} AND currency_id = #{currencyId} AND rebate_point is not null
+  </select>
+
+  <select id="findBelongFixed" resultType="Double">
+    SELECT rebate_fixed FROM t_sys_rebate_setting
+    WHERE manager_id = #{belongId} AND currency_id = #{currencyId}
+  </select>
+
+  <select id="findBelongPoint" resultType="Double">
+    SELECT rebate_point FROM t_sys_rebate_setting
+    WHERE manager_id = #{belongId} AND currency_id = #{currencyId}
+  </select>
+
+  <select id="findRebateByMidAndSymbol" resultMap="RebateEntity">
+    SELECT *,
+    (SELECT fixed FROM t_sys_currency_prices WHERE symbol = #{symbol}) AS fixed,
+    (SELECT ROUND(BidLast, Digits) FROM mt5_prices WHERE Symbol = #{symbol}) AS bid,
+    (SELECT ROUND(BidLast, Digits) FROM mt5_prices WHERE Symbol = (SELECT point_relation FROM t_sys_currency_prices WHERE symbol = #{symbol})) AS relbid,
+    (SELECT Digits FROM mt5_prices WHERE Symbol = #{symbol}) AS digits
+    FROM t_sys_rebate_setting
+    WHERE manager_id = #{managerId} AND currency_id = (SELECT currency_id FROM t_sys_currency_prices WHERE symbol=#{symbol})
+  </select>
+
+  <insert id="insertManagerRebate">
+    INSERT INTO t_sys_manager_rebate
+    (managerid, fixed, point, rebate, over, createTime, ticket, rebateTime)
+    VALUES
+    (#{managerid}, #{fixed}, #{point}, #{rebate}, #{over}, now(), #{ticket}, #{rebateTime})
+  </insert>
+
+  <select id="findManagerRebateList" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT
+    *, DATE_FORMAT(createTime, '%Y-%m-%d %H:%i:%s' ) AS createTimeCol,
+    DATE_FORMAT( rebateTime, '%Y-%m-%d %H:%i:%s' ) AS rebateTimeCol,
+    (SELECT Login FROM mt5_deals WHERE Deal = t.ticket ) AS login,
+    (SELECT Volume FROM mt5_deals WHERE Deal = t.ticket ) AS Volume,
+    (SELECT Symbol FROM mt5_deals WHERE Deal = t.ticket ) AS Symbol,
+    (SELECT PositionID FROM mt5_deals WHERE Deal = t.ticket ) AS PositionID,
+    (SELECT ename FROM t_sys_manager WHERE managerid = t.managerid ) AS ename,
+    (SELECT account FROM t_sys_manager WHERE managerid = t.managerid ) AS account,
+    (SELECT level FROM t_sys_manager WHERE managerid = t.managerid ) AS level
+    FROM t_sys_manager_rebate t
+    <where>
+      <if test="login != null and login != ''">
+        AND managerid = (SELECT managerid FROM t_sys_manager WHERE login = #{login})
+      </if>
+      <if test="rebateDate != null and rebateDate != ''">
+        AND DATE_FORMAT(createTime,'%Y-%m-%d') = #{rebateDate}
+      </if>
+      <if test="ticket != null and ticket != ''">
+        AND ticket IN (SELECT Deal FROM mt5_deals WHERE PositionID = #{ticket})
+      </if>
+      <if test="over != null and over != '' or over == '0'">
+        AND over = #{over}
+      </if>
+    </where>
+  </select>
+
+  <select id="countRebateTotal" resultType="Double">
+    SELECT IF(ISNULL(SUM(rebate)), 0, SUM(rebate))
+    FROM t_sys_manager_rebate WHERE id IN (${ids})
+  </select>
+
+  <update id="updRebateOver">
+    UPDATE t_sys_manager_rebate
+    <set>
+      over = 1,
+      rebateTime = NOW()
+    </set>
+    <where>
+      id IN (${ids})
+    </where>
+  </update>
+
+  <select id="countUnderlingFixed" resultType="Integer">
+    SELECT COUNT(*) FROM t_sys_rebate_setting
+    WHERE manager_id IN (SELECT managerid FROM t_sys_manager WHERE belongid=#{managerId}) AND currency_id = #{currencyId} AND rebate_fixed IS NOT NULL
+  </select>
+
+  <select id="findMaxUnderlingFixed" resultType="Double">
+    SELECT MAX(rebate_fixed) FROM t_sys_rebate_setting
+    WHERE manager_id IN (SELECT managerid FROM t_sys_manager WHERE belongid=#{managerId}) AND currency_id = #{currencyId}
+  </select>
+
+  <select id="countUnderlingPoint" resultType="Integer">
+    SELECT COUNT(*) FROM t_sys_rebate_setting
+    WHERE manager_id IN (SELECT managerid FROM t_sys_manager WHERE belongid=#{managerId}) AND currency_id = #{currencyId} AND rebate_point IS NOT NULL
+  </select>
+
+  <select id="findMaxUnderlingPoint" resultType="Double">
+    SELECT MAX(rebate_point) FROM t_sys_rebate_setting
+    WHERE manager_id IN (SELECT managerid FROM t_sys_manager WHERE belongid=#{managerId}) AND currency_id = #{currencyId}
+  </select>
+
+  <update id="updRebateOverByLogin">
+    UPDATE t_sys_manager_rebate SET over = 1, rebateTime = NOW()
+    WHERE managerid = (SELECT managerid FROM t_sys_manager WHERE login = #{login}) AND over = 0
+  </update>
+
+  <select id="getRebateTotal" resultType="com.crm.platform.entity.pub.StatisticsGoldDTO">
+    SELECT IF (ISNULL(SUM(rebate)), 0, SUM(rebate)) AS profitTotal, COUNT(*) AS countTotal
+    FROM t_sys_manager_rebate
+    <where>
+      <if test="login != null and login != ''">
+        AND managerid = (SELECT managerid FROM t_sys_manager WHERE login = #{login})
+      </if>
+      <if test="ticket != null and ticket != ''">
+        AND ticket = #{ticket}
+      </if>
+      <if test="rebateDate != null and rebateDate != ''">
+        AND DATE_FORMAT(createTime,'%Y-%m-%d') = #{rebateDate}
+      </if>
+      <if test="over != null and over != '' or over == '0'">
+        AND over = #{over}
+      </if>
+    </where>
+  </select>
+
+  <select id="listRebatePlanSettingBO" parameterType="Integer" resultMap="RebatePlanSettingBOResult">
+    SELECT currency_id, rebate_fixed, rebate_point FROM t_rebate_plan_currency
+    WHERE level_id = (SELECT id FROM t_rebate_plan_level WHERE plan_id = #{planId} AND level = #{planLevel})
+  </select>
+
+  <insert id="saveRebateSetting">
+    INSERT INTO t_sys_rebate_setting
+    (manager_id, currency_id, rebate_fixed, rebate_point, gmt_modified, gmt_create)
+    VALUES
+    (#{managerId}, #{currencyId}, #{rebateFixed}, #{rebatePoint}, NOW(), NOW())
+  </insert>
+
+  <select id="listRebatePlan" resultType="com.alibaba.fastjson.JSONObject">
+    SELECT id, name,
+    DATE_FORMAT(gmt_create,'%Y-%m-%d %H:%i:%s') as gmt_create_fmt,
+    DATE_FORMAT(gmt_modified,'%Y-%m-%d %H:%i:%s') as gmt_modified_fmt
+    FROM t_rebate_plan
+  </select>
+
+  <select id="getRebatePlan" resultType="com.crm.platform.entity.pub.RebatePlanDTO">
+    SELECT id, name FROM t_rebate_plan WHERE id=#{id}
+  </select>
+
+  <update id="updateRebatePlan">
+    UPDATE t_rebate_plan
+    SET name = #{name}, gmt_modified = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <insert id="saveRebatePlan">
+    INSERT INTO t_rebate_plan
+    (name, gmt_modified, gmt_create)
+    VALUES
+    (#{name}, NOW(), NOW())
+  </insert>
+
+  <select id="listRebatePlanLevel" resultMap="RebatePlanLevelBOResult">
+    select id, plan_id, level from t_rebate_plan_level where plan_id = #{planId} order by level asc
+  </select>
+
+  <delete id="removeRebatePlanCurrency">
+    delete from t_rebate_plan_currency where level_id = #{levelId}
+  </delete>
+
+  <delete id="removeRebatePlanLevel">
+    delete from t_rebate_plan_level where plan_id = #{planId}
+  </delete>
+
+  <delete id="removeRebatePlan">
+    delete from t_rebate_plan where id = #{id}
+  </delete>
+
+  <select id="listRebatePlanCurrency" resultMap="RebatePlanCurrencyVOResult">
+    select
+    id, level_id, currency_id, rebate_fixed, rebate_point,
+    (select name from t_sys_currency where id = t.currency_id) as currencyName
+    from
+    t_rebate_plan_currency t
+    where
+    level_id = #{levelId}
+  </select>
+
+  <insert id="saveRebatePlanLevel" useGeneratedKeys="true" keyProperty="id" parameterType="com.crm.platform.entity.pub.RebatePlanLevelBO">
+    insert into t_rebate_plan_level
+    (plan_id, level)
+    values
+    (#{planId}, #{level})
+  </insert>
+
+  <insert id="saveRebatePlanCurrency">
+    insert into t_rebate_plan_currency
+    (level_id, currency_id, rebate_fixed, rebate_point)
+    values
+    (#{levelId}, #{currencyId}, #{fixedRebate}, #{pointRebate})
+  </insert>
+
+  <delete id="removeRebateSetting">
+    delete from t_sys_rebate_setting where manager_id = #{managerId}
+  </delete>
+
+  <insert id="insertRebateBO">
+    insert into t_sys_rebate_setting
+    (manager_id, currency_id, rebate_fixed, rebate_point, gmt_modified, gmt_create)
+    values
+    (#{managerId}, #{currencyId}, #{rebateFixed}, #{rebatePoint}, now(), now())
+  </insert>
+
+  <select id="listTransferRebate" resultType="com.alibaba.fastjson.JSONObject">
+    select
+    id, managerId, dollar, state, reason,
+    date_format(createTime,'%Y-%m-%d %T') as createTimeFmt,
+    date_format(reviewTime,'%Y-%m-%d %T') as reviewTimeFmt
+    from
+    t_sys_rebate_transfer
+    where
+    managerId = #{managerid}
+  </select>
+
+  <insert id="insertTransferRebate">
+    insert t_sys_rebate_transfer
+    (managerId, dollar, createTime)
+    values
+    (#{managerid}, #{dollar}, now())
+  </insert>
+
+  <select id="listTransferRebateToReview" resultType="com.alibaba.fastjson.JSONObject">
+    select
+    id, dollar,
+    date_format(createTime,'%Y-%m-%d %T') as createTimeFmt,
+    (select name from t_sys_manager where managerid = t.managerId) as name,
+    (select login from t_sys_manager where managerid = t.managerId) as login,
+    (select Balance from mt5_accounts where Login = (select login from t_sys_manager where managerid = t.managerId)) as balance,
+    (select rebateLogin from t_sys_manager where managerid = t.managerId) as rebateLogin,
+    (select Balance from mt5_accounts where Login = (select rebateLogin from t_sys_manager where managerid = t.managerId)) as rebateBalance
+    from
+    t_sys_rebate_transfer t
+    where
+    state = 0
+  </select>
+
+  <select id="getRebateTransferDTO" resultType="com.crm.platform.entity.pub.RebateTransferReviewDTO">
+    select
+    id, dollar,
+    (select name from t_sys_manager where managerid = t.managerId) as name,
+    (select login from t_sys_manager where managerid = t.managerId) as login,
+    (select Balance from mt5_accounts where Login = (select login from t_sys_manager where managerid = t.managerId)) as balance,
+    (select rebateLogin from t_sys_manager where managerid = t.managerId) as rebateLogin,
+    (select Balance from mt5_accounts where Login = (select rebateLogin from t_sys_manager where managerid = t.managerId)) as rebateBalance
+    from
+    t_sys_rebate_transfer t
+    where
+    id = #{id}
+  </select>
+
+  <update id="saveRebateTransferReview">
+    update t_sys_rebate_transfer
+    set
+    state = #{state},
+    reason = #{reason},
+    reviewTime = now()
+    where
+    id = #{id}
+  </update>
+
+  <select id="countManagerRebateSetting" resultType="int">
+    select count(*) from t_sys_rebate_setting where manager_id = #{managerId}
+  </select>
+
+  <resultMap type="com.crm.platform.entity.pub.RebatePlanCurrencyBO" id="RebatePlanCurrencyBOResult">
+    <result column="level_id" property="levelId" />
+    <result column="currency_id" property="currencyId" />
+    <result column="rebate_fixed" property="fixedRebate" />
+    <result column="rebate_point" property="pointRebate" />
+  </resultMap>
+
+  <select id="listRebatePlanCurrencyBO" resultMap="RebatePlanCurrencyBOResult">
+    select level_id, currency_id, rebate_fixed, rebate_point from t_rebate_plan_currency
+    where level_id = (select id from t_rebate_plan_level where plan_id = #{planId} and level = #{level})
+  </select>
+
+  <select id="getCurrencyPriceBOBySymbol" resultType="com.crm.platform.entity.pub.CurrencyPriceBO">
+    SELECT
+    symbol, currency_id, fixed, point_relation,
+    (select Digits from mt5_prices where Symbol = #{symbol}) as digits,
+    (select round(BidLast, Digits) from mt5_prices where Symbol = #{symbol}) as bid,
+    (select round(BidLast, Digits) from mt5_prices where Symbol = t.point_relation) as relbid
+    FROM t_sys_currency_prices t
+    WHERE symbol = #{symbol}
+  </select>
+
+  <select id="getDailyRebateSumByManagerid" resultType="Double">
+    SELECT IF (ISNULL(SUM(rebate)), 0, SUM(rebate)) FROM t_sys_manager_rebate
+    WHERE managerid = #{managerid} AND TO_DAYS(NOW()) - TO_DAYS(createTime) = 1
+  </select>
+
+</mapper>
